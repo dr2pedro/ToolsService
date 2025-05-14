@@ -37,7 +37,7 @@ class ToolsServerConnection(val transport: Transport, val clientName: String = "
     }
 
     fun getToolDefinitions(): List<ToolDefinition>? {
-        return tools?.map { toolAdapter.serverToolToToolDefinition(it) }
+        return tools?.map { toolAdapter.mcpServerToolToToolDefinition(it) }
     }
     private suspend fun setServerTools() {
         try {

@@ -20,7 +20,9 @@ class LLMHostConnectionTest {
             .appendSystemMessage("Você responderá com o menos palavras possíveis e sem pontuações.")
             .appendUserMessage("Qual é a capital do Brasil?")
         // No modo de compatibilidade da anthropic eles não aceitam tools da openai
-        val response = llmConnection.query(prompt).choices.first().message.content
+        val updatedPrompt = llmConnection.query(prompt)
+        // TODO: Aqui precisa validar todo o retorno da LLM. Espera-se que para diferentes modelos ele esteja mais ou menos completo.
+        val response = updatedPrompt.choices.first().message.content
         assertEquals(response, "Brasília")
     }
 }

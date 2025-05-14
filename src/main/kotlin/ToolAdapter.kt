@@ -19,7 +19,7 @@ class ToolAdapter {
         return Tool(ToolType.Function, functionTool)
     }
 
-    fun serverToolToToolDefinition(serverTool: ToolUnion): ToolDefinition {
+    fun mcpServerToolToToolDefinition(serverTool: ToolUnion): ToolDefinition {
         return object : ToolDefinition {
             override val name: String = serverTool.asTool().name()
             override val description = serverTool.asTool().description().toString()

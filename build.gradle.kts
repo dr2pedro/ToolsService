@@ -10,7 +10,8 @@ repositories {
     mavenCentral()
 }
 
-dependencies {implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
+dependencies {
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
     implementation("io.ktor:ktor-client-logging:3.1.2")
     implementation("io.ktor:ktor-client-core:3.1.2")
     implementation("com.aallam.openai:openai-client:4.0.1")
