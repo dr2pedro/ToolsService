@@ -5,6 +5,15 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 
+/**
+ * A classe responsável por atualizar o prompt com as informações de chamadas de ferramentas.
+ *
+ * @property toolsConnection A lista de conexões com os servidores de ferramentas.
+ * @property llmConnection A conexão com o servidor de linguagem natural (LLM).
+ * @property retry O número de tentativas para chamar uma ferramenta.
+ *
+ * @constructor Cria uma instância da classe [ToolsService].
+*/
 class ToolsService {
     val toolsConnection: MutableMap<String, ToolsServerConnection> = mutableMapOf()
     val llmConnection: LLMHostConnection
@@ -28,10 +37,11 @@ class ToolsService {
             toolsConnection.connect()
         }
     }
+
     private fun findToolsConnection(tollName: String): Pair<ToolsServerConnection?, Map<String, Any?>?> {
         var connection: ToolsServerConnection? = null
         var params: Map<String, Any?>? = null
-        toolsConnection.forEach { (id, toolsConnection) ->
+        toolsConnection.forEach { (_, toolsConnection) ->
             toolsConnection.getToolDefinitions()?.forEach { tool ->
                 if(tool.name == tollName) {
                     connection = toolsConnection

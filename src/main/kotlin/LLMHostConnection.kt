@@ -5,6 +5,15 @@ import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIConfig
 import com.aallam.openai.client.OpenAIHost
 
+/**
+ * Conexão para se comunicar com um host de llm local.
+ *
+ * @property nameOrKey O nome ou chave da API.
+ * @property hostPath O caminho do host.
+ * @property modelName O nome do modelo.
+ *
+ * @constructor Cria uma instância da classe [LLMHostConnection].
+*/
 class LLMHostConnection(val nameOrKey: String, val hostPath: String, val modelName: String) {
     var llmConnection: OpenAI
         private set

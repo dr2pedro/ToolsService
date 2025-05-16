@@ -9,6 +9,11 @@ import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
 
+/**
+ * Transporte para comunicação com o servidor.
+ *
+ * @property transport O transporte usado para se comunicar com o servidor.
+ */
 sealed class Transport {
     abstract fun init(): AbstractTransport
     abstract fun close()

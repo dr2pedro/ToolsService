@@ -9,6 +9,15 @@ import io.modelcontextprotocol.kotlin.sdk.TextContent
 import io.modelcontextprotocol.kotlin.sdk.client.Client
 import kotlinx.coroutines.runBlocking
 
+/**
+ * A classe responsável por se comunicar com o servidor de ferramentas.
+ *
+ * @property transport A lista de conexões com os servidores de ferramentas.
+ * @property clientName O nome do cliente.
+ * @property clientVersion A versão do cliente.
+ *
+ * @constructor Cria uma instância da classe [ToolsServerConnection].
+*/
 class ToolsServerConnection(val transport: Transport, val clientName: String = "default-client", val clientVersion: String = "1.0.0") {
     companion object {
         fun extractText(result: CallToolResultBase?): String? {

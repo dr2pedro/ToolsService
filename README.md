@@ -1,7 +1,45 @@
 #ToolsService
 
 ## Visão Geral
-O `ToolsService` é uma implementação projetada para lidar com a comunicação entre modelos de linguagens (LLM) e servidores de ferramentas. Ele utiliza conexões com servidores para consultar ferramentas, prompts e recursos disponíveis, além de gerenciar chamadas de ferramentas com base em entradas do usuário.
+O `ToolsService` é um serviço projetado para lidar com a comunicação entre modelos de linguagens 
+LLM e servidores de ferramentas [MCP](https://modelcontextprotocol.io/). Ele utiliza conexões
+STDIO ou SSE para ter acesso além das ferramentas, a prompts e aos recursos.
+A ideia principal é que posso ser possível segregar o modelo de LLM que chama a ferramenta
+do modelo que irá responder o usuário final. Isso se deve pelo fato de que muitos modelos 
+disponíveis atualmente não são treinados para ter uma alta taxa de conversão das chamadas de 
+ferramentas, respondendo então da sua base de treinamento ao invés de invocar a ferramenta 
+quando ela estiver disponível, tome como exemplo o modelo abaixo:
+
+![](src/main/resources/groq-tool.png)
+
+Repare que ele foi treinado para converter 89% das chamadas que deveriam acionar as tools 
+disponíveis quando as descrições da ferramenta e dos parâmetros são suficientes, no entanto,
+nem todos os modelos são assim, incluindo os mais populares.
+Nos testes presentes nesse repositório esse modelo `llama3-groq-8B-Tool-Use` identifica as 
+chamadas no padrão configurado de 5 tentativas (mesmo nos servidores contendo descrições 
+pífias do que fazem). Pegando pelo repositório de modelos disponíveis no 
+[Ollama](https://ollama.com/search?c=tools) outros modelos testados foram:
+
+![](src/main/resources/ollama-models.png)
+
+Lembrando que se tratando de um serviço que apenas deve **fazer a chamada da tool** não faria
+sentido usar modelos muito maiores. Os testes foram feitos em uma `Nvidia RTX 3090` e os 
+parâmetros de retry recomendados foram:
+
+|   modelo   | retry | size  | vRAM ocupada | Ordem Custo/Benefício |
+|:----------:|:-----:|:-----:|:------------:|:---------------------:|
+| cogito:3b  |   5   | 2.2GB | 3.4GB | 4 |
+| hermes3:3b |  50   | 2.0GB | 3.4GB | 5 |
+|  qwen2.5:0.5b |  15   | 398MB |  1.0GB | 2 |
+| llama3.2:3b |  10   | 2.0GB | 3.4GB | 6 |
+| qwen3:0.6b |   8   | 523MB | 1.8GB | 3 |
+| llama3-groq-tool-use:latest |   5   | 4.7GB |  5.8GB | 1 |
+
+O produto principal é o `Prompt` nele estará a `ToolCall` que é o objetivo desse serviço caso 
+a chamada de fato exista. Ao final espera-se que esse `Prompt` seja utilizado em uma LLM para 
+virar um `ChatCompletion`. Todas essas entidades são provenientes da **CLI da OpenAI**, que no 
+momento não existe a necessidade de abstrair por ser um padrão aceito por vários provedores 
+de LLM. 
 
 ## Recursos Principais
 - Integração com servidores diversos via diferentes transportes (`Stdio`, `SSE`).
@@ -17,68 +55,56 @@ O `ToolsService` é uma implementação projetada para lidar com a comunicação
 Abaixo segue um exemplo funcional mostrando como inicializar o `ToolsService` e utilizar seus métodos principais para chamar ferramentas ou consultar prompts e recursos.
 
 ```kotlin
-// Configuração da conexão com o LLM
-    val llmConnection = LLMHostConnection(
-        nameOrKey = "ollama",
-        hostPath = "http://localhost:11434/v1/",
-        modelName = "llama3-groq-tool-use"
-    )
+val severURL = "http://localhost:8080"
+val httpClient = HttpClient() { 
+    install(SSE) 
+    install(Logging) 
+}
 
-    // Inicializando o ToolsService com múltiplas conexões
-    val toolsService = ToolsService(llmConnection, listOf(stdioConnection, sseConnection))
+val transport = Transport.Sse(
+    url = severURL, 
+    client = httpClient
+)
 
-    // Construindo e utilizando um prompt
-    val promptBuilder = PromptBuilder()
-        .appendSystemMessage("You ALWAYS search for tools to get the results.")
-        .appendUserMessage("Add 2 to 3 using available tools.")
+// Configurando a conexão com o servidor de Tool
+val toolsConnection = ToolsServerConnection(transport)
 
-    // Atualizando o prompt com chamadas de ferramentas
-    val updatedPrompt = toolsService.updateWithToolCall(promptBuilder)
+val llmConnection = LLMHostConnection(
+    nameOrKey = "ollama",
+    hostPath = "http://localhost:11434/v1/", 
+    modelName = "llama3-groq-tool-use"
+)
 
-    // Realizando uma consulta ao LLM com o prompt atualizado
-    val response = llmConnection.query(updatedPrompt, false).choices.firstOrNull()?.message?.content
+// Iniciando o serviço 
+val service = ToolsService(
+    llmConnection, 
+    toolsConnection,
+    retry = 5
+)
 
-    // Exibindo a resposta
-    println("Resposta: $response")
+val prompt = PromptBuilder()
+    .appendSystemMessage("You ALWAYS search for tools to get the results.")
+    .appendUserMessage("Add 2 to 3 using available tools.")  // PromptBuilder é um wraper do Prompt
+val updatedPrompt = service.updateWithToolCall(prompt)       // Recebe novamente o Prompt
 
-    // Consultando prompts e recursos disponíveis
-    val prompts = toolsService.loadPrompts()
-    val resources = toolsService.fetchResources()
+// Fim do escopo do serviço
+// A seguir é o ciclo esperado de como o resultado deva ser utilizado.
 
-    println("Prompts disponíveis: ${prompts.map { it.description }}")
-    println("Recursos disponíveis: ${resources.map { it.name }}")
+val response = llmConnection.query(updatedPrompt, false).choices.first().message.content as String
+assert(response.contains("5"))
 ```
 
+Para servidores protegidos por autenticação por HTTP Headers configure no *HttpClient* o seguinte:
+```kotlin
+val httpClient = HttpClient() {
+            install(SSE)
+            install(Logging)
+                defaultRequest {
+                    headers.append("Authorization", "Bearer ...") 
+                }
+        }
+```
 ---
-
-## Aplicações
-
-O `ToolsService` é altamente aplicável para cenários em que modelos de aprendizado de máquina necessitam:
-1. **Integração com APIs externas**: como usar ferramentas hospedadas em servidores para buscar, processar ou transformar dados.
-2. **Execução dinâmica de tarefas**: usando ferramentas dinâmicas para auxiliar no desenvolvimento de programas, processamento de linguagem natural, ou até mesmo cálculos matemáticos complexos.
-3. **Automatização de processos interativos**: fornece compatibilidade entre ferramentas e prompts complexos, permitindo pipelines com interações automáticas.
-
----
-
-## Limitações
-- **Complexidade**: A estrutura atual pode ser complexa para usuários iniciantes em Kotlin devido ao uso intensivo de corrotinas e integrações de servidores.
-- **Conexão aos servidores**: Se os servidores de ferramentas estiverem indisponíveis ou mal configurados, o serviço não ficará funcional.
-- **Dependências externas**: O funcionamento depende de bibliotecas como `kotlinx.serialization`, `ktor` e integrações com LLMs, o que pode gerar dependências difíceis de gerenciar.
-- **Validação de Parâmetros**: A validação atual dos parâmetros das ferramentas pode ser rígida, resultando em falhas frequentes quando os schemas não correspondem perfeitamente.
-
----
-
-## Pontos de Melhoria Futura
-1. **Flexibilidade na Validação de Parâmetros**: Implementar validações menos rigorosas ou possibilidade de configuração customizada para lidar com situações onde os parâmetros não se alinham perfeitamente.
-2. **Documentação e Exemplos**: Melhorar os exemplos e incluir documentação detalhada para desenvolvedores iniciantes.
-3. **Relatório de Logs**: Adicionar relatórios estruturados e configuráveis para melhor rastrear erros e manipular eventos do servidor.
-4. **Cache de Ferramentas, Prompts e Recursos**: Implementar níveis de cache local para evitar múltiplas chamadas ao servidor e melhorar a performance.
-5. **Testes Automatizados**: Embora existam testes básicos, expandi-los para cenários mais complexos com mocks seria ideal.
-6. **Interface Gráfica (GUI)**: Criar uma interface de usuário para configurar conexões, consultar ferramentas disponíveis e visualizar prompts e recursos.
-7. **Suporte a Configurações Dinâmicas**: Permitir que transportes e conexões sejam configurados em tempo de execução.
-
----
-
 ## Estrutura do Projeto
 
 ### Arquivos principais
@@ -87,7 +113,7 @@ O `ToolsService` é altamente aplicável para cenários em que modelos de aprend
 3. **`PromptBuilder.kt`**: Cria e organiza mensagens baseadas no estado dos prompts.
 4. **`ToolsServerConnection.kt`**: Abstração para conexão com servidores de ferramentas e seus recursos.
 
-### Testes de unidade
+### Testes de integração
 Os testes fornecidos em `ToolsServiceTest` cobrem:
 - Configuração de ferramentas com múltiplos transportes (Stdio & SSE).
 - Chamadas de ferramentas em servidores.

@@ -5,9 +5,12 @@ import com.aallam.openai.api.chat.ToolId
 import com.aallam.openai.api.chat.ToolMessageBuilder
 import com.aallam.openai.api.chat.UserMessageBuilder
 
-class PromptBuilder(
-    previousPrompt: PromptBuilder? = null,
-) {
+/**
+ * Builder para criar prompts para a API de chat.
+ *
+ * @constructor Cria uma instância da classe [PromptBuilder].
+ */
+class PromptBuilder {
     var messages: MutableList<ChatMessage> = mutableListOf()
         private set
     var toolsDefinitions: MutableList<ToolDefinition> = mutableListOf()
