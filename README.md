@@ -4,11 +4,11 @@
 O `ToolsService` é um serviço projetado para lidar com a comunicação entre modelos de linguagens 
 LLM e servidores de ferramentas [MCP](https://modelcontextprotocol.io/). Ele utiliza conexões
 STDIO ou SSE para ter acesso além das ferramentas, a prompts e aos recursos.
-A ideia principal é que posso ser possível segregar o modelo de LLM que chama a ferramenta
-do modelo que irá responder o usuário final. Isso se deve pelo fato de que muitos modelos 
-disponíveis atualmente não são treinados para ter uma alta taxa de conversão das chamadas de 
-ferramentas, respondendo então da sua base de treinamento ao invés de invocar a ferramenta 
-quando ela estiver disponível, tome como exemplo o modelo abaixo:
+A ideia principal é que deve ser possível segregar o modelo de LLM que chama a ferramenta
+do modelo que irá responder o utilizador final (usuário ou outra LLM/Serviço). Isso se deve pelo 
+fato de que muitos modelos disponíveis atualmente não são treinados para ter uma alta taxa de 
+conversão das chamadas ferramentas, respondendo então da sua base de treinamento ao invés de 
+invocar a ferramenta quando ela estiver disponível, tome como exemplo o modelo abaixo:
 
 ![](src/main/resources/groq-tool.png)
 
@@ -16,15 +16,44 @@ Repare que ele foi treinado para converter 89% das chamadas que deveriam acionar
 disponíveis quando as descrições da ferramenta e dos parâmetros são suficientes, no entanto,
 nem todos os modelos são assim, incluindo os mais populares.
 Nos testes presentes nesse repositório esse modelo `llama3-groq-8B-Tool-Use` identifica as 
-chamadas no padrão configurado de 5 tentativas (mesmo nos servidores contendo descrições 
-pífias do que fazem). Pegando pelo repositório de modelos disponíveis no 
-[Ollama](https://ollama.com/search?c=tools) outros modelos testados foram:
+chamadas no padrão configurado de 5 tentativas, mesmo nos servidores contendo descrições 
+pífias do que fazem como no exemplo abaixo:
+
+```kotlin
+server.addTool(
+                name = "add",
+                description = "A tool to add two numbers",
+                inputSchema = Tool.Input(
+                    properties = buildJsonObject {
+                        putJsonObject("a") {
+                            put("type", "number")
+                        }
+                        putJsonObject("b") {
+                            put("type", "number")
+                        }
+                    },
+                    required = listOf("a", "b")
+                )
+            ) { request ->
+                val a = request.arguments["a"]?.jsonPrimitive?.content?.toIntOrNull()!!
+                val b = request.arguments["b"]?.jsonPrimitive?.content?.toIntOrNull()!!
+                val sum = a + b
+                print("Sum: $sum")
+
+                CallToolResult(
+                    content = listOf(TextContent(sum.toString()))
+                )
+            }
+```
+
+Testamos também utilizando outros modelos disponíveis no repositório do 
+[Ollama](https://ollama.com/search?c=tools):
 
 ![](src/main/resources/ollama-models.png)
 
 Lembrando que se tratando de um serviço que apenas deve **fazer a chamada da tool** não faria
-sentido usar modelos muito maiores. Os testes foram feitos em uma `Nvidia RTX 3090` e os 
-parâmetros de retry recomendados foram:
+sentido usar modelos muito maiores. Os testes foram feitos numa configuração de `GPU: Nvidia RTX 3090; CPU:
+13th Intel Core i5-13600k; 32GB RAM DDR4` e os parâmetros de retry recomendados foram:
 
 |   modelo   | retry | size  | vRAM ocupada | Ordem Custo/Benefício |
 |:----------:|:-----:|:-----:|:------------:|:---------------------:|
@@ -52,7 +81,8 @@ de LLM.
 
 ## Exemplo de Uso - `Main.kt`
 
-Abaixo segue um exemplo funcional mostrando como inicializar o `ToolsService` e utilizar seus métodos principais para chamar ferramentas ou consultar prompts e recursos.
+Abaixo segue um exemplo funcional mostrando como inicializar o `ToolsService` e utilizar os seus métodos principais para 
+chamar ferramentas ou consultar prompts e recursos.
 
 ```kotlin
 val severURL = "http://localhost:8080"
@@ -104,6 +134,23 @@ val httpClient = HttpClient() {
                 }
         }
 ```
+
+Para utilização de LLM as a Service certifique-se que o provedor aceita o padrão da **CLI da OpenAI**, passe a sua
+API Token na propriedade `nameOrKey` e o modelName corretamente:
+
+```kotlin
+val key = System.getenv("ANTHROPIC_API_KEY") ?: ""
+val llmConnection = LLMHostConnection(
+    key, 
+    "https://api.anthropic.com/v1/",
+    "claude-3-haiku-20240307"
+)
+
+```
+
+**TODO**: Separar na classe `Enviroment&Config` todas as configurações LLMHostConnection, ToolsService e do 
+ToolsServerConnection para permitir que elas venham de um .json ou .yaml da configuração de um K8S Pod por exemplo.
+
 ---
 ## Estrutura do Projeto
 
