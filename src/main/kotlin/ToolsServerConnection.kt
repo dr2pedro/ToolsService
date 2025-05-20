@@ -39,14 +39,14 @@ class ToolsServerConnection(val transport: Transport, val clientName: String = "
         private set
     var resources: List<Resource>? = null
         private set
-    private val toolAdapter = ToolAdapter()
+    private val toolMapper = ToolMapper()
 
     init {
         connection = Client(Implementation(name = clientName, version = clientVersion))
     }
 
     fun getToolDefinitions(): List<ToolDefinition>? {
-        return tools?.map { toolAdapter.mcpServerToolToToolDefinition(it) }
+        return tools?.map { toolMapper.mcpServerToolToToolDefinition(it) }
     }
     private suspend fun setServerTools() {
         try {

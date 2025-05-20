@@ -9,11 +9,11 @@ import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * Adaptador para converter ferramentas do servidor de ferramentas para ferramentas do client.
+ * Mapper das ferramentas do servidor de ferramentas para ferramentas do client.
  *
- * @constructor Cria uma instância da classe [ToolAdapter].
+ * @constructor Cria uma instância da classe [ToolMapper].
  */
-class ToolAdapter {
+class ToolMapper {
     fun toolDefinitionToOpenAITool(toolDefinition: ToolDefinition): Tool {
         val params = buildToolParameters(toolDefinition.inputSchema)
         val functionTool = FunctionTool(

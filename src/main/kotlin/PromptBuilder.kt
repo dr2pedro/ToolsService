@@ -15,7 +15,7 @@ class PromptBuilder {
         private set
     var toolsDefinitions: MutableList<ToolDefinition> = mutableListOf()
         private set
-    private val toolAdapter = ToolAdapter()
+    private val toolMapper = ToolMapper()
     fun addTool(toolDefinition: ToolDefinition): PromptBuilder {
         toolsDefinitions.add(toolDefinition)
         return this
@@ -41,7 +41,7 @@ class PromptBuilder {
     }
     fun build(): Pair<List<ChatMessage>, List<Tool>> {
         val resultedMessages = messages.toList()
-        val clientTools = toolsDefinitions.map { toolAdapter.toolDefinitionToOpenAITool(it)  }
+        val clientTools = toolsDefinitions.map { toolMapper.toolDefinitionToOpenAITool(it)  }
         return Pair(resultedMessages, clientTools)
     }
 }
