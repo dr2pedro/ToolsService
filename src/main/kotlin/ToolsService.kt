@@ -16,9 +16,9 @@ import kotlinx.serialization.json.jsonObject
 */
 class ToolsService {
     val toolsConnection: MutableMap<String, ToolsServerConnection> = mutableMapOf()
-    val llmConnection: LLMHostConnection
+    val llmConnection: LLMChatConnection
     val retry: Int
-    constructor(llmConnection: LLMHostConnection,toolsConnection: List<ToolsServerConnection>, retry: Int = 5) {
+    constructor(llmConnection: LLMChatConnection, toolsConnection: List<ToolsServerConnection>, retry: Int = 5) {
         this.llmConnection = llmConnection
         toolsConnection.forEach { tools ->
             this.toolsConnection.put("${tools.clientName}/v${tools.clientVersion}", tools)
@@ -28,7 +28,7 @@ class ToolsService {
             toolsConnection.connect()
         }
     }
-    constructor(llmConnection: LLMHostConnection,toolsConnection: ToolsServerConnection, retry: Int = 5) {
+    constructor(llmConnection: LLMChatConnection, toolsConnection: ToolsServerConnection, retry: Int = 5) {
         this.llmConnection = llmConnection
         this.toolsConnection.put("${toolsConnection.clientName}/v${toolsConnection.clientVersion}", toolsConnection)
         this.retry = retry
@@ -92,7 +92,7 @@ class ToolsService {
         try {
             while (attempts < retry) {
                 println("\n[INFO] Tentativa $attempts \n")
-                var queryResponse = llmConnection.query(prompt, true).choices.first().message
+            var queryResponse = llmConnection.query( LLMChatConnection.QueryParams(prompt, true)).choices.first().message
                 val toolCall = queryResponse.toolCalls?.firstOrNull() as? ToolCall.Function
                 if (toolCall == null) {
                     println("\n[INFO] Não existe uma chamada de tools nesta tentativa.\n")

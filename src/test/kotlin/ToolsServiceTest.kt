@@ -10,7 +10,7 @@ class ToolsServiceTest {
         val serverPathString = "C:\\Users\\dr2p\\WebstormProjects\\simple-mcp-server\\dist\\stdio_server.js"
         val transport = Transport.Stdio(serverPathString)
         val toolsConnection = ToolsServerConnection(transport)
-        val llmConnection = LLMHostConnection("ollama", "http://localhost:11434/v1/", "llama3-groq-tool-use")
+        val llmConnection = LLMChatConnection("ollama", "http://localhost:11434/v1/", "llama3-groq-tool-use")
         val service = ToolsService(llmConnection, toolsConnection)
         val prompt = PromptBuilder()
             .appendSystemMessage("You ALWAYS search for tools to get the results.")
@@ -19,7 +19,8 @@ class ToolsServiceTest {
             prompt.addTool(tool)
         }
         val updatedPrompt = service.updateWithToolCall(prompt)
-        val response = llmConnection.query(updatedPrompt, false).choices.first().message.content as String
+        val params = LLMChatConnection.QueryParams(updatedPrompt)
+        val response = llmConnection.query(params).choices.first().message.content as String
         print(response)
         assert(response.contains("5"))
     }
@@ -29,13 +30,14 @@ class ToolsServiceTest {
         val httpClient = HttpClient() { install(SSE); install(Logging) }
         val transport = Transport.Sse(severURL, httpClient)
         val toolsConnection = ToolsServerConnection(transport)
-        val llmConnection = LLMHostConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
+        val llmConnection = LLMChatConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
         val service = ToolsService(llmConnection, toolsConnection)
         val prompt = PromptBuilder()
             .appendSystemMessage("You ALWAYS search for tools to get the results.")
             .appendUserMessage("Add 2 to 3 using available tools.")
         val updatedPrompt = service.updateWithToolCall(prompt)
-        val response = llmConnection.query(updatedPrompt, false).choices.first().message.content as String
+        val params = LLMChatConnection.QueryParams(updatedPrompt)
+        val response = llmConnection.query(params).choices.first().message.content as String
         assert(response.contains("5"))
     }
     @Test
@@ -44,7 +46,7 @@ class ToolsServiceTest {
         val httpClient = HttpClient() { install(SSE); install(Logging) }
         val transport = Transport.Sse(severURL, httpClient)
         val toolsConnection = ToolsServerConnection(transport)
-        val llmConnection = LLMHostConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
+        val llmConnection = LLMChatConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
         val service = ToolsService(llmConnection, toolsConnection)
         val prompts = service.loadPrompts()
         assert(prompts.isNotEmpty())
@@ -57,7 +59,7 @@ class ToolsServiceTest {
         val httpClient = HttpClient() { install(SSE); install(Logging) }
         val transport = Transport.Sse(severURL, httpClient)
         val toolsConnection = ToolsServerConnection(transport)
-        val llmConnection = LLMHostConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
+        val llmConnection = LLMChatConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
         val service = ToolsService(llmConnection, toolsConnection)
         val resources = service.fetchResources()
         assert(resources.isNotEmpty())
@@ -73,13 +75,14 @@ class ToolsServiceTest {
         val httpClient = HttpClient() { install(SSE); install(Logging) }
         val transport2 = Transport.Sse(severURL, httpClient)
         val toolsConnection2 = ToolsServerConnection(transport2)
-        val llmConnection = LLMHostConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
+        val llmConnection = LLMChatConnection("ollama","http://localhost:11434/v1/", "llama3-groq-tool-use")
         val service = ToolsService(llmConnection, listOf<ToolsServerConnection>(toolsConnection1, toolsConnection2))
         val prompt = PromptBuilder()
             .appendSystemMessage("You ALWAYS search for tools to get the results.")
             .appendUserMessage("Add 2 to 3 using available tools.")
         val updatedPrompt = service.updateWithToolCall(prompt)
-        val response = llmConnection.query(updatedPrompt, false).choices.first().message.content as String
+        val params = LLMChatConnection.QueryParams(updatedPrompt)
+        val response = llmConnection.query(params).choices.first().message.content as String
         assert(response.contains("5"))
     }
 }
