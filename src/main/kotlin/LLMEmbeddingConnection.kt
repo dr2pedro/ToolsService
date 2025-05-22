@@ -5,6 +5,9 @@ import com.aallam.openai.client.OpenAI
 import com.aallam.openai.client.OpenAIConfig
 import com.aallam.openai.client.OpenAIHost
 
+// Essa classe não precisa estar aqui. Ela deve estar em uma biblioteca separada.
+// Só quem chama as tools (que é o objetivo desse serviço) é a conexão por chat, o restante
+// faz mais sentido estar em um serviço de Agents.
 class LLMEmbeddingConnection(nameOrKey: String, hostPath: String, modelName: String) : LLMConnection<List<String>, EmbeddingResponse> {
     private var llmConnection: OpenAI
     var model: String? = null
